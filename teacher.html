@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>조석 탐구 — 교사용 대시보드</title>
+<style>
+  :root{
+    --bg:#F4F7F9; --card:#FFFFFF; --ink:#14323F; --dim:#5F7280;
+    --brand:#0E7C86; --brand-deep:#0A5A62; --brand-soft:#E7F3F4;
+    --line:#E1E9ED; --coral:#E0584D; --slate:#3C6FA5; --gold:#C89A3D;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+       background:var(--bg); color:var(--ink); line-height:1.6; padding:20px 14px 60px;}
+  .wrap{max-width:1080px; margin:0 auto;}
+  .mono{font-family:Consolas,"Courier New",monospace; font-variant-numeric:tabular-nums;}
+  header{padding:6px 4px 14px; display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap;}
+  .kicker{font-size:11.5px; letter-spacing:.24em; color:var(--brand); font-weight:800;}
+  h1{font-size:clamp(20px,3.5vw,27px); font-weight:800; letter-spacing:-.02em;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:18px;
+        padding:24px; margin-top:14px;
+        box-shadow:0 1px 2px rgba(20,50,63,.05), 0 10px 28px rgba(20,50,63,.05);}
+  .card h2{font-size:17px; font-weight:800; margin-bottom:12px;}
+  button{font-family:inherit; cursor:pointer; border:none; border-radius:12px;
+         padding:10px 18px; font-size:14px; font-weight:700;}
+  .btn-main{background:var(--brand); color:#fff;} .btn-main:hover{background:var(--brand-deep);}
+  .btn-main:disabled{background:#C2CFD5; cursor:not-allowed;}
+  .btn-ghost{background:#EDF2F4; color:var(--ink);} .btn-ghost:hover{background:#E2EAEE;}
+  .btn-ghost[aria-pressed="true"]{background:var(--ink); color:#fff;}
+  input{font-family:inherit; font-size:14.5px; border:1.5px solid var(--line); border-radius:12px;
+        padding:11px 14px; width:100%;}
+  input:focus{outline:3px solid #8FD0D6; outline-offset:1px; border-color:var(--brand);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} }
+  .field label{display:block; font-size:12.5px; font-weight:800; color:var(--brand-deep); margin-bottom:6px;}
+  .err{color:var(--coral); font-size:13px; font-weight:700; margin-top:10px;}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px;}
+  .chips{display:flex; gap:9px; flex-wrap:wrap; margin-top:8px;}
+  .chip{background:var(--brand-soft); color:var(--brand-deep); border-radius:999px;
+        padding:7px 15px; font-size:13.5px; font-weight:700;}
+  table{border-collapse:collapse; width:100%; font-size:13.5px;}
+  th,td{border-bottom:1px solid var(--line); padding:9px 10px; text-align:left; vertical-align:top;}
+  th{background:#F1F6F8; font-weight:700; position:sticky; top:0;}
+  tr.row{cursor:pointer;} tr.row:hover{background:#F6FAFB;}
+  tr.detail td{background:#FBFDFD; font-size:13px;}
+  .kv{display:grid; grid-template-columns:170px 1fr; gap:4px 12px;}
+  .kv b{color:var(--brand-deep); font-size:12.5px;}
+  .bar{display:flex; align-items:center; gap:10px; margin:7px 0;}
+  .bar .lbl{width:110px; font-size:13.5px; font-weight:700; text-align:right;}
+  .bar .track{flex:1; background:#EDF2F4; border-radius:999px; height:26px; overflow:hidden;}
+  .bar .fill{height:100%; border-radius:999px; background:var(--brand);
+             display:flex; align-items:center; justify-content:flex-end;
+             color:#fff; font-size:12.5px; font-weight:700; padding-right:9px; min-width:30px;
+             transition:width .4s ease;}
+  .hint{font-size:12.5px; color:var(--dim); margin-top:8px;}
+  .empty{color:var(--dim); font-size:14px; padding:14px 0;}
+  #dash{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div class="kicker">지구시스템과학 · 해수의 운동 · 6차시</div>
+    <h1>조석 탐구 — 교사용 대시보드</h1>
+  </div>
+</header>
+
+<!-- 로그인 -->
+<section class="card" id="loginCard">
+  <h2>교사 로그인</h2>
+  <div class="grid2">
+    <div class="field"><label for="tEmail">이메일</label><input type="email" id="tEmail" autocomplete="username"></div>
+    <div class="field"><label for="tPw">비밀번호</label><input type="password" id="tPw" autocomplete="current-password"></div>
+  </div>
+  <p style="margin-top:14px;"><button class="btn-main" id="loginBtn">로그인</button></p>
+  <p class="err" id="loginErr"></p>
+  <p class="hint">Firebase Authentication에 등록된 교사 계정으로 로그인해요. (설정 방법은 파일 상단 주석 참고)</p>
+</section>
+
+<!-- 대시보드 -->
+<div id="dash">
+  <div class="toolbar">
+    <button class="btn-main" id="refreshBtn">새로고침</button>
+    <button class="btn-ghost" id="autoBtn" aria-pressed="false">자동 새로고침 (15초)</button>
+    <button class="btn-ghost" id="maskBtn" aria-pressed="false">이름 가리기 (화면 공유용)</button>
+    <button class="btn-ghost" id="csvAllBtn">전체 기록 내려받기 (.csv)</button>
+    <button class="btn-ghost" id="logoutBtn">로그아웃</button>
+    <span class="hint" id="statusMsg"></span>
+  </div>
+  <div class="chips" id="summaryChips"></div>
+
+  <section class="card">
+    <h2>① 수업 시작 — 직감 분포 <span class="hint" style="display:inline">"하루 동안 물은 몇 번 오르내릴까요?"</span></h2>
+    <div id="guessBars"></div>
+    <details style="margin-top:12px;"><summary style="cursor:pointer; font-size:13.5px; font-weight:700; color:var(--brand-deep);">초기 생각 펼쳐 보기 — "밀물과 썰물은 왜 일어날까요?"</summary>
+      <div id="whyList" style="margin-top:10px; font-size:13.5px;"></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>② 예측 분포 <span class="hint" style="display:inline">"오늘은 사리와 조금 중 어디에 가까울까요?" — 실시간 심판 직전에 띄우기 좋아요</span></h2>
+    <div id="predBars"></div>
+    <div id="sariBars" style="margin-top:14px;"></div>
+  </section>
+
+  <section class="card">
+    <h2>③ 최종 제출 <span class="hint" style="display:inline">행을 누르면 전체 기록이 펼쳐져요</span></h2>
+    <div style="max-height:520px; overflow:auto; border-radius:12px; border:1px solid var(--line);">
+      <table id="finalTable"></table>
+    </div>
+    <p class="empty" id="finalEmpty" hidden>아직 최종 제출이 없어요.</p>
+  </section>
+</div>
+
+<script>
+/* ============================================================
+   교사용 설정 — 학생용 웹앱과 같은 값을 넣으세요.
+   [최초 1회 설정]
+   1) Firebase 콘솔 → Authentication → 시작하기 → 로그인 방법에서 '이메일/비밀번호' 사용 설정
+   2) Authentication → Users 탭 → '사용자 추가'로 교사 이메일·비밀번호 등록
+   3) Firestore → 규칙에 아래를 붙여넣기 (교사 이메일을 본인 것으로 바꾸세요):
+
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /tide_submissions/{doc} {
+         allow create: if true;
+         allow read: if request.auth != null
+                     && request.auth.token.email == "teacher@example.com";
+         allow update, delete: if false;
+       }
+     }
+   }
+============================================================ */
+var FIREBASE = {
+  projectId: "newtide-ec490",
+  apiKey: "AIzaSyBANKMDzgZ-Ox37CDxV-rLB3VXvZE_SOeo",
+  collection: "tide_submissions"
+};
+
+(function(){
+  "use strict";
+  var state = { token:"", docs:[], mask:false, timer:null };
+  function $(id){ return document.getElementById(id); }
+  function esc(t){ return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  var LABELS={ studentId:"학번", name:"이름", group:"모둠", station:"관측소", period:"자료 기간",
+    guess:"처음 직감(하루 횟수)", guessWhy:"초기 생각(밀물·썰물의 이유)", dayCount:"확인한 횟수",
+    comparedDays:"비교한 날짜", cleanDecision:"자료 점검 결정", gate:"숫자의 의미(잠깐 멈춤)",
+    cols:"만든 요약값", chartTitle:"그래프 제목", axisY:"세로축", axisX:"가로축",
+    upDays:"▲ 큰 날", dnDays:"▼ 작은 날", interval:"간격(일)", ideas:"주기 후보",
+    moonObs:"달 위상 관찰", bestCand:"유력한 후보", candWhy:"후보의 이유",
+    pred:"예측(오늘)", nextSari:"다음 사리 예측", predWhy:"예측의 근거",
+    statement:"관계 진술", reflect:"성찰", submittedAt:"제출 시각" };
+
+  /* ---------- 로그인 ---------- */
+  $("loginBtn").addEventListener("click", doLogin);
+  $("tPw").addEventListener("keydown", function(e){ if(e.key==="Enter") doLogin(); });
+  function doLogin(){
+    $("loginErr").textContent="";
+    if(!FIREBASE.projectId || !FIREBASE.apiKey){
+      $("loginErr").textContent="파일 상단의 FIREBASE 설정(projectId, apiKey)을 먼저 채워 주세요."; return;
+    }
+    $("loginBtn").disabled=true;
+    fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="+FIREBASE.apiKey,{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:$("tEmail").value.trim(), password:$("tPw").value, returnSecureToken:true})
+    }).then(function(r){ return r.json(); }).then(function(j){
+      $("loginBtn").disabled=false;
+      if(j.idToken){ state.token=j.idToken; $("loginCard").style.display="none"; $("dash").style.display="block"; loadAll(); }
+      else { $("loginErr").textContent="로그인에 실패했어요: "+(j.error && j.error.message || "정보를 확인해 주세요."); }
+    }).catch(function(){ $("loginBtn").disabled=false; $("loginErr").textContent="네트워크 오류가 났어요. 다시 시도해 주세요."; });
+  }
+  $("logoutBtn").addEventListener("click", function(){
+    state.token=""; state.docs=[]; if(state.timer){clearInterval(state.timer); state.timer=null;}
+    $("dash").style.display="none"; $("loginCard").style.display="block";
+  });
+
+  /* ---------- 데이터 불러오기 ---------- */
+  function loadAll(){
+    $("statusMsg").textContent="불러오는 중…";
+    var base="https://firestore.googleapis.com/v1/projects/"+FIREBASE.projectId
+      +"/databases/(default)/documents/"+FIREBASE.collection+"?pageSize=300";
+    var docs=[];
+    function page(tok){
+      return fetch(base+(tok?"&pageToken="+encodeURIComponent(tok):""),
+        {headers:{Authorization:"Bearer "+state.token}})
+        .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+        .then(function(j){
+          (j.documents||[]).forEach(function(d){
+            var o={}; Object.keys(d.fields||{}).forEach(function(k){ o[k]=d.fields[k].stringValue||""; });
+            docs.push(o);
+          });
+          if(j.nextPageToken) return page(j.nextPageToken);
+        });
+    }
+    page().then(function(){
+      state.docs=docs; render();
+      $("statusMsg").textContent="업데이트: "+new Date().toLocaleTimeString("ko-KR");
+    }).catch(function(e){
+      $("statusMsg").textContent="불러오기 실패("+e.message+") — Firestore 규칙의 교사 이메일을 확인해 주세요.";
+    });
+  }
+  $("refreshBtn").addEventListener("click", loadAll);
+  $("autoBtn").addEventListener("click", function(){
+    if(state.timer){ clearInterval(state.timer); state.timer=null; $("autoBtn").setAttribute("aria-pressed","false"); }
+    else { state.timer=setInterval(loadAll,15000); $("autoBtn").setAttribute("aria-pressed","true"); }
+  });
+  $("maskBtn").addEventListener("click", function(){
+    state.mask=!state.mask; $("maskBtn").setAttribute("aria-pressed", state.mask?"true":"false"); render();
+  });
+
+  function who(o){
+    if(state.mask) return "학생 " + ((o.studentId||"").slice(-2)||"○○");
+    return (o.studentId?o.studentId+" ":"")+(o.name||"(이름 없음)");
+  }
+
+  /* ---------- 렌더 ---------- */
+  function render(){
+    var initials=state.docs.filter(function(d){return d.type==="initial";});
+    var finals=state.docs.filter(function(d){return d.type==="final";});
+    finals.sort(function(a,b){ return (a.studentId||"").localeCompare(b.studentId||""); });
+
+    var stations={}; finals.forEach(function(d){ if(d.station) stations[d.station]=(stations[d.station]||0)+1; });
+    var chips="<span class='chip'>직감 응답 "+initials.length+"명</span><span class='chip'>최종 제출 "+finals.length+"명</span>";
+    Object.keys(stations).forEach(function(st){ chips+="<span class='chip'>"+esc(st)+" "+stations[st]+"명</span>"; });
+    $("summaryChips").innerHTML=chips;
+
+    barChart("guessBars", countBy(initials,"guess", ["한 번","두 번","날마다 다름","모름"]), "#0E7C86");
+    var whys=initials.filter(function(d){return d.guessWhy;});
+    $("whyList").innerHTML = whys.length
+      ? whys.map(function(d){ return "<p>• <b>"+esc(who(d))+"</b> — "+esc(d.guessWhy)+"</p>"; }).join("")
+      : "<p class='empty'>아직 초기 생각이 없어요.</p>";
+
+    barChart("predBars", countBy(finals,"pred", ["사리","조금"]), "#E0584D");
+    var sari={}; finals.forEach(function(d){ if(d.nextSari) sari[d.nextSari+"일"]=(sari[d.nextSari+"일"]||0)+1; });
+    barChart("sariBars", Object.keys(sari).sort(function(a,b){return parseInt(a)-parseInt(b);})
+      .map(function(k){return [k+" (다음 사리)",sari[k]];}), "#3C6FA5");
+
+    renderFinalTable(finals);
+  }
+  function countBy(arr, key, order){
+    var c={}; arr.forEach(function(d){ var v=d[key]||"(미응답)"; c[v]=(c[v]||0)+1; });
+    var keys=order?order.filter(function(k){return c[k];}).concat(Object.keys(c).filter(function(k){return order.indexOf(k)<0;})):Object.keys(c);
+    return keys.map(function(k){ return [k,c[k]]; });
+  }
+  function barChart(id, pairs, color){
+    if(pairs.length===0){ $(id).innerHTML="<p class='empty'>아직 응답이 없어요.</p>"; return; }
+    var mx=Math.max.apply(null,pairs.map(function(p){return p[1];}));
+    $(id).innerHTML = pairs.map(function(p){
+      var w=Math.max(8, p[1]/mx*100);
+      return "<div class='bar'><div class='lbl'>"+esc(p[0])+"</div><div class='track'><div class='fill' style='width:"+w+"%; background:"+color+"'>"+p[1]+"명</div></div></div>";
+    }).join("");
+  }
+  function renderFinalTable(finals){
+    var t=$("finalTable");
+    if(finals.length===0){ t.innerHTML=""; $("finalEmpty").hidden=false; return; }
+    $("finalEmpty").hidden=true;
+    var h="<tr><th>학생</th><th>모둠</th><th>관측소</th><th>예측(오늘)</th><th>다음 사리</th><th>제출 시각</th></tr>";
+    finals.forEach(function(d,i){
+      h+="<tr class='row' data-i='"+i+"'><td><b>"+esc(who(d))+"</b></td><td>"+esc(d.group)+"</td><td>"+esc(d.station)
+        +"</td><td>"+esc(d.pred)+"</td><td class='mono'>"+esc(d.nextSari)+"일</td><td class='mono'>"
+        +esc((d.submittedAt||"").replace("T"," ").slice(5,16))+"</td></tr>";
+      h+="<tr class='detail' data-d='"+i+"' hidden><td colspan='6'><div class='kv'>";
+      Object.keys(LABELS).forEach(function(k){
+        if(k==="name"||k==="studentId") return;
+        if(d[k]) h+="<b>"+LABELS[k]+"</b><span>"+esc(d[k])+"</span>";
+      });
+      h+="</div></td></tr>";
+    });
+    t.innerHTML=h;
+    t.querySelectorAll("tr.row").forEach(function(r){
+      r.addEventListener("click", function(){
+        var det=t.querySelector("tr.detail[data-d='"+r.getAttribute("data-i")+"']");
+        det.hidden=!det.hidden;
+      });
+    });
+  }
+
+  /* ---------- 전체 CSV ---------- */
+  function cell(v){ v=String(v===undefined||v===null?"":v).replace(/\r?\n/g," / "); return '"'+v.replace(/"/g,'""')+'"'; }
+  $("csvAllBtn").addEventListener("click", function(){
+    var keys=["type"].concat(Object.keys(LABELS));
+    var head={type:"구분"}; Object.keys(LABELS).forEach(function(k){head[k]=LABELS[k];});
+    var L=[keys.map(function(k){return cell(head[k]);}).join(",")];
+    state.docs.slice().sort(function(a,b){ return (a.studentId||"").localeCompare(b.studentId||""); })
+      .forEach(function(d){ L.push(keys.map(function(k){return cell(d[k]);}).join(",")); });
+    var blob=new Blob(["\uFEFF"+L.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download="조석탐구_전체기록.csv";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+  });
+})();
+</script>
+</body>
+</html>
