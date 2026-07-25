@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>데이터 속에서 하늘을 읽다 — 조석 탐구</title>
+<style>
+  :root{
+    --bg:#F4F7F9; --card:#FFFFFF; --ink:#14323F; --dim:#5F7280;
+    --brand:#0E7C86; --brand-deep:#0A5A62; --brand-soft:#E7F3F4;
+    --line:#E1E9ED; --coral:#E0584D; --coral-soft:#FDEEEC;
+    --slate:#3C6FA5; --slate-soft:#EBF1F8; --gold:#C89A3D;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+  body{
+    font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6;
+    padding:0 14px 120px;
+  }
+  .wrap{max-width:920px; margin:0 auto;}
+  .mono{font-family:Consolas,"Courier New",monospace; font-variant-numeric:tabular-nums;}
+
+  header.hero{padding:26px 4px 10px;}
+  .hero .kicker{font-size:11.5px; letter-spacing:.24em; color:var(--brand); font-weight:800;}
+  .hero h1{font-size:clamp(21px,4vw,30px); font-weight:800; letter-spacing:-.02em; margin-top:4px;}
+
+  /* 탭 */
+  .tabs{position:sticky; top:0; z-index:20; background:linear-gradient(var(--bg) 85%, transparent);
+        padding:12px 0 10px; display:flex; gap:7px; flex-wrap:wrap;}
+  .tab{border:none; background:#E9EFF2; color:var(--dim); font-family:inherit; cursor:pointer;
+       border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700;
+       display:inline-flex; align-items:center; gap:5px; transition:all .15s;}
+  .tab .no{font-size:11px; opacity:.75;}
+  .tab.done{background:#D6EBEC; color:var(--brand-deep);}
+  .tab.done .no::before{content:"✓"; margin-right:2px;}
+  .tab.cur{background:var(--brand); color:#fff; box-shadow:0 3px 10px rgba(14,124,134,.35);}
+  .tab.lock{opacity:.45; cursor:not-allowed;}
+  .tab.lock::after{content:"🔒"; font-size:10px;}
+
+  .page{display:none;}
+  .page.on{display:block; animation:fade .22s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:18px;
+        padding:26px 26px 28px; margin-top:16px;
+        box-shadow:0 1px 2px rgba(20,50,63,.05), 0 10px 28px rgba(20,50,63,.05);}
+  .card h2{font-size:19px; font-weight:800; letter-spacing:-.01em; margin-bottom:4px;}
+  .card .sub{font-size:13px; color:var(--dim); margin-bottom:16px;}
+
+  .q{background:var(--brand-soft); border-radius:14px; padding:15px 18px;
+     font-size:15.5px; font-weight:700; margin:14px 0 16px; color:var(--ink);}
+  .q small{display:block; font-weight:400; color:var(--dim); font-size:13px; margin-top:5px; line-height:1.65;}
+  .hint{font-size:13px; color:var(--dim); margin-top:10px;}
+  .notice{font-size:13px; color:var(--brand-deep); background:var(--brand-soft);
+          border-radius:10px; padding:9px 13px; margin-top:12px; display:inline-block;}
+
+  button{font-family:inherit; cursor:pointer; border:none; border-radius:12px;
+         padding:11px 20px; font-size:14.5px; font-weight:700; transition:all .15s;}
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+    outline:3px solid #8FD0D6; outline-offset:2px;}
+  .btn-main{background:var(--brand); color:#fff;}
+  .btn-main:hover{background:var(--brand-deep);}
+  .btn-main:disabled{background:#C2CFD5; cursor:not-allowed;}
+  .btn-ghost{background:#EDF2F4; color:var(--ink);}
+  .btn-ghost:hover{background:#E2EAEE;}
+  .btn-ghost[aria-pressed="true"]{background:var(--ink); color:#fff;}
+
+  input[type="text"], input[type="number"], textarea, select{
+    font-family:inherit; font-size:14.5px; border:1.5px solid var(--line); border-radius:12px;
+    padding:11px 14px; color:var(--ink); background:#fff; width:100%; transition:border-color .15s;}
+  input:focus, textarea:focus, select:focus{border-color:var(--brand);}
+  textarea{resize:vertical; min-height:82px;}
+  label.chk{display:inline-flex; align-items:center; gap:8px; background:#F3F7F8; border:1.5px solid var(--line);
+            border-radius:12px; padding:11px 15px; font-size:14.5px; font-weight:600; cursor:pointer; transition:all .15s;}
+  label.chk input{width:17px; height:17px; accent-color:var(--brand);}
+  label.chk:has(input:checked){border-color:var(--brand); background:var(--brand-soft);}
+  .radios{display:flex; gap:10px; flex-wrap:wrap;}
+
+  .filebox{border:2px dashed var(--line); border-radius:16px; padding:24px; text-align:center; background:#FAFCFD;}
+  .filebox strong{color:var(--brand-deep);}
+  .meta{display:flex; flex-wrap:wrap; gap:9px; margin-top:14px;}
+  .meta .pill{background:var(--brand-soft); color:var(--brand-deep); border-radius:999px; padding:6px 14px;
+              font-size:13px; font-weight:700;}
+
+  table{border-collapse:collapse; width:100%; font-size:13px;}
+  th,td{border:1px solid var(--line); padding:5px 9px; text-align:right;}
+  th{background:#F1F6F8; font-weight:700; text-align:center;}
+  td:first-child, th:first-child{text-align:center;}
+  .tbl-scroll{max-height:250px; overflow:auto; border-radius:12px; border:1px solid var(--line); margin-top:12px;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} }
+  .field label{display:block; font-size:12.5px; font-weight:800; color:var(--brand-deep);
+               letter-spacing:.05em; margin-bottom:6px;}
+
+  .gatecard{border-left:6px solid var(--coral);}
+  .cleancard{border-left:6px solid var(--slate);}
+
+  .chart-shell{margin-top:16px; background:#FDFEFE; border:1px solid var(--line); border-radius:14px; padding:10px 6px 4px;}
+  svg{width:100%; height:auto; display:block;}
+  .marker-modes{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; align-items:center;}
+  .marker-list{margin-top:10px; font-size:14px;}
+  .marker-list b.up{color:var(--coral);} .marker-list b.dn{color:var(--slate);}
+
+  .mooncal{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:14px;}
+  .mday{background:#FBFDFD; border:1.5px solid var(--line); border-radius:12px; padding:7px 4px 6px;
+        text-align:center; min-height:66px;}
+  .mday .d{font-size:12px; font-weight:700; color:var(--dim);}
+  .mday .moon{font-size:22px; line-height:1.3;}
+  .mday .lbl{font-size:10.5px; color:var(--brand-deep); font-weight:700;}
+  .mday.markUp{border-color:var(--coral); background:var(--coral-soft);}
+  .mday.markUp .d{color:var(--coral);}
+  .mday.markDn{border-color:var(--slate); background:var(--slate-soft);}
+  .mday.markDn .d{color:var(--slate);}
+  .mday.blank{background:transparent; border:none; min-height:0;}
+  .wk{font-size:11.5px; font-weight:800; color:var(--dim); text-align:center;}
+
+  .statement{background:#F6FBFB; border:1.5px solid var(--line); border-radius:14px; padding:18px; margin-top:8px;
+             font-size:15.5px; line-height:2.2;}
+  .statement input{display:inline-block; width:90px; padding:5px 9px; font-size:15px; text-align:center;
+                   border-radius:9px; margin:0 2px;}
+  .recall{background:var(--slate-soft); border-radius:12px; padding:12px 16px; font-size:14px; margin:10px 0;}
+
+
+  /* 밀물·썰물 애니메이션 */
+  .tidebox{border-radius:16px; overflow:hidden; border:1px solid var(--line); margin:14px 0 4px;}
+  @keyframes tideUp{ from{ transform:translateY(0);} to{ transform:translateY(-26px);} }
+  #tideWater{ animation:tideUp 7s ease-in-out infinite alternate; }
+  @keyframes lblA{ 0%,40%{opacity:1;} 55%,100%{opacity:0;} }
+  @keyframes lblB{ 0%,45%{opacity:0;} 60%,100%{opacity:1;} }
+  #lblFlood{ animation:lblA 14s ease-in-out infinite; }
+  #lblEbb{ animation:lblB 14s ease-in-out infinite; }
+
+  /* 질문 주차장 / 핵심 질문 / 이름 붙이기 */
+  .parking{background:#FFF8E8; border:1.5px dashed var(--gold); border-radius:14px;
+           padding:14px 18px; margin-top:16px; font-size:14px;}
+  .parking b{color:#8A6A20;}
+  .naming{background:var(--brand-soft); border-left:5px solid var(--brand); border-radius:0 14px 14px 0;
+          padding:14px 18px; margin-top:16px; font-size:14.5px;}
+  .driving{background:linear-gradient(135deg,#0E3A46,#0E7C86); color:#fff; border-radius:16px;
+           padding:20px 22px; margin-top:16px; box-shadow:0 8px 24px rgba(14,58,70,.28);}
+  .driving .k{font-size:11px; letter-spacing:.22em; font-weight:800; opacity:.75;}
+  .driving .qq{font-size:clamp(17px,3vw,21px); font-weight:800; margin-top:4px; letter-spacing:-.01em;}
+  .driving small{display:block; font-size:12.5px; opacity:.85; margin-top:6px; font-weight:400;}
+
+  /* 비교할 날 칩 */
+  .daychips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .daychip{display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px;
+           font-size:13px; font-weight:700; color:#fff; border:none; cursor:pointer;}
+  .todaymoon{display:flex; align-items:center; gap:14px; background:#10202B; color:#EAF2F6;
+             border-radius:16px; padding:16px 20px; margin:12px 0;}
+  .todaymoon .m{font-size:44px; line-height:1;}
+  .todaymoon .t{font-size:13.5px;}
+  .todaymoon .t b{font-size:15px;}
+
+  .navbar{position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+          border-top:1px solid var(--line); padding:12px 14px; z-index:30;
+          box-shadow:0 -4px 16px rgba(20,50,63,.05);}
+  .navbar .inner{max-width:920px; margin:0 auto; display:flex; gap:10px; align-items:center;}
+  .navbar .msg{flex:1; font-size:12.5px; color:var(--dim);}
+  .footer-note{margin-top:28px; font-size:12.5px; color:var(--dim); text-align:center;}
+  .savestat{font-size:12.5px; margin-left:8px;}
+  .savestat.ok{color:var(--brand-deep); font-weight:700;}
+  .savestat.err{color:var(--coral); font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">지구시스템과학 · 해수의 운동</div>
+  <h1>데이터 속에서 하늘을 읽다</h1>
+</header>
+
+<nav class="tabs" id="tabs" aria-label="탐구 단계"></nav>
+
+<!-- 1. 시작하기 -->
+<div class="page" data-page="1">
+  <section class="card">
+    <h2>시작하기</h2>
+    <div class="sub">오늘의 탐구가 무엇인지 확인하고, 지금의 직감을 남겨 두는 단계예요.</div>
+    <div class="q">한 달치 바닷물 높이 기록 속에는, 하늘에서 일어난 일이 숨어 있어요.
+      <small>오늘 우리는 그것을 찾아내고, 미래까지 예측해 봅니다. 이 도구는 계산만 대신해요 — 무엇을 계산할지, 데이터가 무엇을 말하는지 읽는 것은 여러분의 몫이에요.</small></div>
+    <div class="grid2">
+      <div class="field"><label for="stuId">학번</label><input type="text" id="stuId" inputmode="numeric" placeholder="예: 20315"></div>
+      <div class="field"><label for="stuName">이름</label><input type="text" id="stuName" placeholder="예: 김바다"></div>
+      <div class="field"><label for="stuGroup">모둠 (선택)</label><input type="text" id="stuGroup" placeholder="예: 3모둠"></div>
+    </div>
+    <div class="tidebox">
+      <svg viewBox="0 0 600 200" role="img" aria-label="밀물과 썰물 애니메이션">
+        <rect width="600" height="200" fill="#DFF0F5"/>
+        <path d="M600 200 L600 80 L330 150 L180 185 L0 200 Z" fill="#E8D8AC"/>
+        <path d="M600 200 L600 92 L340 158 L190 190 L0 200 Z" fill="#DCC98F" opacity=".6"/>
+        <g id="tideWater">
+          <path d="M-20 132 Q 20 124 60 132 T 140 132 T 220 132 T 300 132 T 380 132 T 460 132 T 540 132 T 620 132 L620 260 L-20 260 Z" fill="#4FA3B8" opacity=".9"/>
+          <path d="M-20 140 Q 20 133 60 140 T 140 140 T 220 140 T 300 140 T 380 140 T 460 140 T 540 140 T 620 140 L620 260 L-20 260 Z" fill="#2E7F95" opacity=".8"/>
+        </g>
+        <line x1="0" y1="106" x2="600" y2="106" stroke="#E0584D" stroke-width="1.4" stroke-dasharray="6 5" opacity=".8"/>
+        <line x1="0" y1="140" x2="600" y2="140" stroke="#3C6FA5" stroke-width="1.4" stroke-dasharray="6 5" opacity=".8"/>
+        <text id="lblFlood" x="16" y="30" font-size="15" font-weight="bold" fill="#0A5A62">물이 밀려 들어와요 (밀물)</text>
+        <text id="lblEbb" x="16" y="30" font-size="15" font-weight="bold" fill="#8A6A20">물이 빠져나가요 (썰물)</text>
+        <text x="584" y="100" font-size="11" fill="#E0584D" text-anchor="end">가장 높을 때</text>
+        <text x="584" y="156" font-size="11" fill="#3C6FA5" text-anchor="end">가장 낮을 때</text>
+      </svg>
+    </div>
+    <div class="q" style="margin-top:14px;">바닷가에서 물이 밀려 들어오고, 빠져나가는 것을 본 적 있나요?
+      <small>직감으로 답해 볼까요 — 하루 동안, 물은 몇 번이나 오르내릴까요?</small></div>
+    <div class="radios" role="radiogroup" aria-label="직감 선택">
+      <label class="chk"><input type="radio" name="guess" value="한 번"> 하루에 한 번쯤</label>
+      <label class="chk"><input type="radio" name="guess" value="두 번"> 하루에 두 번쯤</label>
+      <label class="chk"><input type="radio" name="guess" value="날마다 다름"> 날마다 다를 것 같아요</label>
+      <label class="chk"><input type="radio" name="guess" value="모름"> 잘 모르겠어요</label>
+    </div>
+    <div class="field" style="margin-top:16px;"><label for="guessWhy">그렇다면, 밀물과 썰물은 왜 일어날까요? 지금 떠오르는 생각을 그대로 적어 주세요</label>
+      <textarea id="guessWhy" placeholder="예: ○○ 때문인 것 같아요 / 예전에 어디서 들었는데 … / 잘 모르겠어요 (몰라도 괜찮아요!)"></textarea></div>
+    <p class="notice">지금의 직감과 생각은 수업 끝에 다시 만나요. 데이터를 본 뒤의 나와 비교해 볼 거예요.</p>
+  </section>
+</div>
+
+<!-- 2. 데이터 -->
+<div class="page" data-page="2">
+  <section class="card">
+    <h2>데이터 올리기</h2>
+    <div class="sub">우리 모둠 관측소의 실제 관측 기록을 불러오는 단계예요.</div>
+    <div class="filebox">
+      <p><strong>바다누리 조위 관측자료(.txt)</strong>를 선택하거나, 아래에 붙여넣어 주세요.</p>
+      <p style="margin-top:10px;"><input type="file" id="fileInput" accept=".txt,.csv,.tsv,text/plain" aria-label="관측자료 파일 선택"></p>
+      <details style="margin-top:10px; font-size:13px; color:var(--dim); text-align:left;">
+        <summary style="cursor:pointer;">파일 업로드가 안 되나요? (붙여넣기)</summary>
+        <textarea id="pasteInput" placeholder="메모장에서 자료 전체를 복사해 여기에 붙여넣고, 아래 버튼을 눌러 주세요." style="margin-top:8px;"></textarea>
+        <button class="btn-ghost" id="pasteBtn" style="margin-top:8px;">붙여넣은 자료 읽기</button>
+      </details>
+    </div>
+    <div class="meta" id="metaRow" hidden>
+      <span class="pill" id="mStation"></span>
+      <span class="pill" id="mPeriod"></span>
+      <span class="pill" id="mCount"></span>
+    </div>
+    <div class="tbl-scroll" id="rawPreviewWrap" hidden><table id="rawPreview"></table></div>
+  </section>
+
+  <section class="card cleancard" id="cleanCard" hidden>
+    <h2>자료 점검 — 이상한 값이 보여요</h2>
+    <div class="q">바닷물의 높이가 1분 만에 몇 미터씩 변할 수 있을까요?
+      <small>실제 관측 장비도 가끔 오류값을 기록해요. 아래 값들을 어떻게 할지, 여러분이 직접 결정해 주세요.</small></div>
+    <div class="tbl-scroll" style="max-height:170px;"><table id="outlierTable"></table></div>
+    <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+      <button class="btn-main" id="excludeBtn">오류로 판단하고 제외할게요</button>
+      <button class="btn-ghost" id="keepBtn">일단 그대로 둘게요</button>
+    </div>
+    <p class="hint" id="cleanStatus"></p>
+  </section>
+</div>
+
+<!-- 3. 하루 보기 -->
+<div class="page" data-page="3">
+  <section class="card">
+    <h2>하루 들여다보기</h2>
+    <div class="sub">직감이 맞았는지, 실제 데이터로 확인하는 단계예요.</div>
+    <div class="q">하루 동안 물은 정말 몇 번 오르내릴까요?
+      <small>날짜를 골라 곡선을 띄워 보세요. 그리고 <b>다른 날을 두세 개 더 추가해서</b> 겹쳐 보세요 — 날마다 모양이 같은지도 비교할 수 있어요.</small></div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <select id="daySelect" style="max-width:170px;" aria-label="비교할 날짜 선택"></select>
+      <button class="btn-ghost" id="dayAddBtn">이 날 추가하기</button>
+      <button class="btn-ghost" id="dayClearBtn">모두 지우기</button>
+    </div>
+    <div class="daychips" id="dayChips"></div>
+    <div class="chart-shell" id="dayChartShell" hidden><svg id="dayChart" viewBox="0 0 900 320" role="img" aria-label="여러 날의 조위 곡선 비교"></svg></div>
+    <div class="grid2" style="margin-top:16px;">
+      <div class="field"><label for="countConfirm">데이터로 확인해 보니 — 하루 동안 물은 몇 번 오르내리나요?</label>
+        <input type="number" id="countConfirm" min="1" max="9" placeholder="숫자로 적어 주세요"></div>
+    </div>
+    <div class="parking" id="parkingCard" hidden>🅿️ <b>질문 주차장:</b> "왜 하필 하루에 그 횟수만큼일까?" — 아주 좋은 질문이에요.
+      하지만 이 질문은 오늘의 데이터만으로는 답할 수 없어요. 여기에 잘 세워 두었다가, <b>다음 시간에</b> 답을 만나요.</div>
+    <div class="naming" id="namingCard" hidden><b>이름 붙이기 —</b> 곡선을 비교해 보면, 오르내림의 <b>폭</b>이 날마다 같지 않다는 게 보이나요?
+      하루 중 가장 높은 물과 가장 낮은 물의 차이를 <b>'조차'</b>라고 불러요.</div>
+    <div class="driving" id="drivingCard" hidden>
+      <div class="k">오늘의 핵심 질문</div>
+      <div class="qq">무엇이 이러한 조차의 차이를 만들어낼까요?</div>
+      <small>이 질문에 답하기 위해, 이제 하루가 아니라 한 달 전체를 들여다봅니다.</small>
+    </div>
+  </section>
+</div>
+
+<!-- 4. 요약 -->
+<div class="page" data-page="4">
+  <section class="card">
+    <h2>하루를 한 줄로 요약하기</h2>
+    <div class="sub">하루 안의 변화와 한 달의 변화를 나누는 단계예요.</div>
+    <div class="q">한 달의 리듬을 보려면, 하루를 하나의 수로 요약해야 해요.
+      <small>어떤 값이 필요할까요? 만들고 싶은 값을 직접 골라 주세요. (여러 개도 좋아요)</small></div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <label class="chk"><input type="checkbox" value="max"> 일일 최고 조위</label>
+      <label class="chk"><input type="checkbox" value="min"> 일일 최저 조위</label>
+      <label class="chk"><input type="checkbox" value="range"> 일일 조차 (최고−최저)</label>
+      <label class="chk"><input type="checkbox" value="avg"> 일일 평균 조위</label>
+    </div>
+    <p style="margin-top:14px;"><button class="btn-main" id="buildBtn" disabled>선택한 값으로 일별 표 만들기</button></p>
+    <div class="tbl-scroll" id="dailyWrap" hidden><table id="dailyTable"></table></div>
+  </section>
+</div>
+
+<!-- 5. 멈춤 -->
+<div class="page" data-page="5">
+  <section class="card gatecard">
+    <h2>잠깐, 손을 멈추고</h2>
+    <div class="sub">숫자를 계속 다루기 전에, 그 의미를 한 번 붙잡는 단계예요.</div>
+    <div class="q">방금 만든 표에서 숫자 하나를 골라 보세요. 이 숫자는 무엇을 의미할까요?
+      <small>예: "6월 3일의 일일 조차는 152인데, 이것은 …라는 뜻이에요." 한 문장으로 쓰면 다음 스텝으로 넘어갈 수 있어요.</small></div>
+    <textarea id="gateText" placeholder="이 숫자의 의미를 나의 말로 적기 (10자 이상)"></textarea>
+    <div class="tbl-scroll" id="dailyWrap2" style="max-height:180px;"><table id="dailyTable2"></table></div>
+  </section>
+</div>
+
+<!-- 6. 그래프 -->
+<div class="page" data-page="6">
+  <section class="card">
+    <h2>그래프 그리기 — 이름 붙이기</h2>
+    <div class="sub">하루가 하나의 점이 되었어요. 이제 점들을 이어 봅니다.</div>
+    <div class="q">데이터들의 공통점이나 리듬이 보이나요?
+      <small>무엇을 그릴지 고르고, 제목과 축 이름도 직접 정해 보세요. 제목은 그래프를 다 읽고 나서 붙여도 좋아요.</small></div>
+    <div id="seriesPick" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+    <div class="grid2">
+      <div class="field"><label for="tTitle">그래프 제목</label><input type="text" id="tTitle" placeholder="그래프가 말하는 것을 제목으로"></div>
+      <div class="field"><label for="tY">세로축(Y) 이름</label><input type="text" id="tY" placeholder="예: ??? (cm)"></div>
+      <div class="field"><label for="tX">가로축(X) 이름</label><input type="text" id="tX" placeholder="예: ???"></div>
+    </div>
+    <div class="chart-shell"><svg id="mainChart" viewBox="0 0 900 430" role="img" aria-label="일별 요약값 그래프"></svg></div>
+    <div class="marker-modes" role="group" aria-label="그래프 표시 도구">
+      <span style="font-size:13.5px; font-weight:800; color:var(--brand-deep);">그래프에 표시하기 →</span>
+      <button class="btn-ghost" id="modeUp" aria-pressed="false">▲ 값이 큰 날</button>
+      <button class="btn-ghost" id="modeDn" aria-pressed="false">▼ 값이 작은 날</button>
+      <button class="btn-ghost" id="modeErase" aria-pressed="false">지우개</button>
+      <button class="btn-ghost" id="clearMarks">모두 지우기</button>
+    </div>
+    <p class="hint">모드를 켠 뒤 그래프의 점을 누르면 표시돼요. 값이 큰 날(▲)을 <b>두 개 이상</b> 찾아 주세요 — 반복을 확인하려면 적어도 두 번은 보아야 하니까요.</p>
+    <div class="marker-list" id="markerList"></div>
+  </section>
+</div>
+
+<!-- 7. 생각 -->
+<div class="page" data-page="7">
+  <section class="card">
+    <h2>이 반복은 무엇일까요?</h2>
+    <div class="sub">그래프에서 찾은 리듬의 정체를 추리하는 단계예요.</div>
+    <div class="naming"><b>이름 붙이기 —</b> 방금 여러분이 찾은, 조차가 <b>가장 큰 날</b>을 <b>'사리'</b>,
+      <b>가장 작은 날</b>을 <b>'조금'</b>이라고 불러요. 여러분이 먼저 발견했고, 이름은 지금 붙는 거예요.</div>
+    <div class="q">표시한 날들을 다시 볼까요?
+      <small id="q7small"></small></div>
+    <div class="grid2">
+      <div class="field"><label for="intervalInput">▲ 표시한 날들 사이의 간격은 대략 며칠인가요?</label>
+        <input type="number" id="intervalInput" min="1" max="31" placeholder="숫자로 적어 주세요"></div>
+    </div>
+    <div class="q" style="margin-top:16px;">이 날짜만큼의 주기로 반복되는 것에는 무엇이 있을까요?
+      <small>바다 밖으로 눈을 돌려 보세요 — 자연에서, 하늘에서, 달력에서. 떠오르는 것을 모두 적어 주세요. 정답을 고르는 게 아니라 <b>후보를 모으는</b> 시간이에요.</small></div>
+    <textarea id="ideaText" placeholder="예: ○○이 이 정도 주기로 반복돼요 / ○○도 비슷한 것 같아요 …"></textarea>
+  </section>
+</div>
+
+<!-- 8. 후보 검증 -->
+<div class="page" data-page="8">
+  <section class="card">
+    <h2>무엇이 조석을 만들었을까요?</h2>
+    <div class="sub">모아 둔 후보를 하늘과 나란히 놓고 시험하는 단계예요.</div>
+    <div class="q">이 달력에는 그 달, 밤하늘의 달 모양이 담겨 있어요.
+      <small>여러분이 그래프에서 표시한 날짜들이 달력 위에 함께 표시되어 있어요. <b style="color:var(--coral)">붉은 칸(▲ 큰 날)</b>과 <b style="color:var(--slate)">푸른 칸(▼ 작은 날)</b>의 달 모양을 각각 살펴봐 주세요.</small></div>
+    <div class="mooncal" id="moonCal"></div>
+    <div class="q" style="margin-top:18px;">무엇이 보이나요?
+      <small>▲ 날들의 달 모양에는 공통점이 있나요? ▼ 날들은요? 관찰한 것을 그대로 적어 주세요.</small></div>
+    <textarea id="moonObs" placeholder="예: 내가 표시한 큰 날들은 달이 … / 작은 날들은 …"></textarea>
+    <div class="q" style="margin-top:18px;">앞에서 모은 후보들 중, 이 달력과 맞아떨어지는 후보는 무엇인가요?
+      <small>그 후보를 고른 이유(무엇이 어떻게 맞아떨어졌는지)도 함께 적어 주세요. 맞아떨어지는 후보가 없다면, 그것도 훌륭한 발견이에요 — 그대로 적어 주세요.</small></div>
+    <div class="grid2">
+      <div class="field"><label for="bestCand">가장 유력한 후보</label><input type="text" id="bestCand" placeholder="예: 달의 모양(위상)"></div>
+    </div>
+    <textarea id="candWhy" style="margin-top:10px;" placeholder="그렇게 판단한 이유: 무엇이 어떻게 맞아떨어졌나요?"></textarea>
+  </section>
+</div>
+
+<!-- 9. 예측 -->
+<div class="page" data-page="9">
+  <section class="card">
+    <h2>예측하기</h2>
+    <div class="sub">패턴을 찾았다면, 미래를 말할 수 있어요.</div>
+    <div class="recall" id="recallGuess"></div>
+    <div class="todaymoon" id="todayMoon"></div>
+    <div class="q">이번에는 데이터를 근거로 답해 볼까요?
+      <small>여러분이 발견한 규칙과 오늘의 달을 근거로 — 오늘은 사리와 조금 중 어디에 가까울까요?</small></div>
+    <div class="radios" role="radiogroup" aria-label="데이터 기반 예측">
+      <label class="chk"><input type="radio" name="pred" value="사리"> 사리에 가까워요</label>
+      <label class="chk"><input type="radio" name="pred" value="조금"> 조금에 가까워요</label>
+    </div>
+    <div class="grid2" style="margin-top:14px;">
+      <div class="field"><label for="nextSari">우리 관측소의 다음 사리는 며칠쯤일까요?</label>
+        <input type="number" id="nextSari" min="1" max="31" placeholder="날짜(일)로 적어 주세요"></div>
+    </div>
+    <div class="field" style="margin-top:12px;"><label for="predWhy">그렇게 예측한 근거를 적어 주세요 (이번에는 근거가 필요해요!)</label>
+      <textarea id="predWhy" placeholder="예: 분석한 달의 패턴에서 … / 오늘의 달 모양이 … 이기 때문에 …"></textarea></div>
+    <p class="notice">예측이 맞았는지는 잠시 뒤, 바다누리 실시간 조위에서 다 같이 확인할 거예요.</p>
+  </section>
+</div>
+
+<!-- 10. 마무리 -->
+<div class="page" data-page="10">
+  <section class="card">
+    <h2>관계를 문장으로</h2>
+    <div class="sub">오늘 발견한 것을 하나의 과학적인 문장으로 완성해요.</div>
+    <div class="statement">
+      조차는 약 <input type="text" id="s1" maxlength="6" aria-label="주기(일)"> 일 주기로 커지고 작아지며,
+      조차가 가장 큰 시기(사리)는 달의 위상이 <input type="text" id="s2" style="width:120px" aria-label="달의 위상 1"> ·
+      <input type="text" id="s3" style="width:120px" aria-label="달의 위상 2"> 일 때 나타난다.
+    </div>
+    <div class="recall" id="recallInitial"></div>
+    <div class="q" style="margin-top:14px;">처음의 생각과 지금의 답은 어떻게 달라졌나요?
+      <small>무엇이 여러분의 생각을 바꾸었는지(혹은 그대로였는지) 한두 문장으로 적어 주세요.</small></div>
+    <textarea id="reflectText" placeholder="처음에는 … 라고 생각했는데, 데이터를 보고 나니 …"></textarea>
+    <div class="parking" style="margin-top:14px;">🅿️ <b>주차장에서 찾아가는 질문들:</b> "왜 하루에 두 번일까?" 그리고 오늘 새로 생긴 질문 —
+      "왜 하필 <b>그 달 모양</b>일 때 조차가 커질까?" 두 질문의 답은 <b>다음 시간</b>에 함께 만나요. 힌트: 두 답은 같은 곳에서 나와요.</div>
+  </section>
+
+  <section class="card">
+    <h2>제출하기</h2>
+    <div class="sub">오늘의 탐구 기록을 선생님께 보내는 단계예요.</div>
+    <p style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-main" id="submitBtn">탐구 기록 제출하기</button>
+      <button class="btn-ghost" id="csvBtn" hidden>백업으로 내려받기 (.csv)</button>
+      <span class="savestat" id="submitMsg"></span>
+    </p>
+  </section>
+</div>
+
+<p class="footer-note">국립해양조사원 바다누리 해양정보 서비스 관측자료 · 잠실고등학교 지구시스템과학</p>
+</div>
+
+<div class="navbar">
+  <div class="inner">
+    <button class="btn-ghost" id="prevBtn">← 이전</button>
+    <div class="msg" id="navMsg"></div>
+    <button class="btn-main" id="nextBtn">다음 →</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     선생님 설정 — Firebase (Firestore)
+     1) console.firebase.google.com 에서 프로젝트 생성
+     2) Firestore Database 만들기
+     3) 프로젝트 설정(톱니바퀴)에서 projectId 와 apiKey 를 복사해 아래에 붙여넣기
+     비워 두면 제출은 이 기기(csv)로만 저장돼요.
+  ============================================================ */
+  var FIREBASE = {
+    projectId: "",          // 예: "tide-inquiry-2026"
+    apiKey: "",             // 예: "AIzaSy..."
+    collection: "tide_submissions"
+  };
+
+  var state = { station:"", rows:[], days:[], daily:{}, cols:[], markers:[], mode:null,
+                ym:"", year:0, month:0, outlierIdx:[], exclude:false, built:false,
+                page:1, initialSaved:false, compareDays:[] };
+  var COLDEF = { max:"일일 최고 조위(cm)", min:"일일 최저 조위(cm)", range:"일일 조차(cm)", avg:"일일 평균 조위(cm)" };
+  var SERIES_COLORS = { max:"#0E7C86", min:"#3C6FA5", range:"#E0584D", avg:"#8A6FBF" };
+  var PAGE_NAMES = ["시작","데이터","하루 보기","요약","멈춤","그래프","생각","달과 대조","예측","마무리"];
+  var LAST = 10;
+
+  function $(id){ return document.getElementById(id); }
+  function pad(n){ return (n<10?"0":"")+n; }
+  function esc(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function radioVal(name){
+    var r=document.querySelector('input[name="'+name+'"]:checked');
+    return r ? r.value : "";
+  }
+
+  /* ---------- 게이트 ---------- */
+  function upMarks(){ return state.markers.filter(function(m){return m.type==="up";}).map(function(m){return m.day;})
+      .filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return a-b;}); }
+  function dnMarks(){ return state.markers.filter(function(m){return m.type==="dn";}).map(function(m){return m.day;})
+      .filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return a-b;}); }
+
+  function canLeave(p){
+    switch(p){
+      case 1: return ($("stuId").value.trim().length>=1 && $("stuName").value.trim().length>=2 && radioVal("guess"))
+        ? "" : "학번과 이름을 쓰고, 직감을 하나 골라 주세요.";
+      case 2: return state.rows.length ? "" : "관측자료를 올리면 다음으로 갈 수 있어요.";
+      case 3: return (state.compareDays.length >= 2 && +$("countConfirm").value > 0)
+        ? "" : "서로 다른 날을 두 개 이상 겹쳐 보고, 확인한 횟수를 적어 주세요.";
+      case 4: return state.built ? "" : "값을 골라 일별 표를 만들어 주세요.";
+      case 5: return $("gateText").value.trim().length >= 10 ? "" : "숫자의 의미를 한 문장(10자 이상)으로 적으면 열려요.";
+      case 6: return upMarks().length >= 2 ? "" : "값이 큰 날(▲)을 두 개 이상 표시해 주세요.";
+      case 7: return (+$("intervalInput").value > 0 && $("ideaText").value.trim().length >= 5)
+        ? "" : "간격(숫자)과 후보를 적으면 다음으로 갈 수 있어요.";
+      case 8: return ($("moonObs").value.trim().length >= 5 && $("bestCand").value.trim() && $("candWhy").value.trim().length >= 5)
+        ? "" : "관찰한 것, 유력한 후보, 그 이유까지 적어 주세요.";
+      case 9: return (radioVal("pred") && +$("nextSari").value > 0 && $("predWhy").value.trim().length >= 5)
+        ? "" : "예측 두 가지와 근거를 적으면 마무리로 갈 수 있어요.";
+      default: return "";
+    }
+  }
+  function maxReach(){
+    var m=1;
+    while(m<LAST && canLeave(m)==="") m++;
+    return m;
+  }
+
+  /* ---------- 이동 ---------- */
+  function go(p){
+    if(p<1||p>LAST) return;
+    if(p>maxReach()) return;
+    if(state.page===1 && p>1) saveInitial();
+    state.page = p;
+    document.querySelectorAll(".page").forEach(function(pg){
+      pg.classList.toggle("on", +pg.getAttribute("data-page")===p);
+    });
+    if(p===3) renderDayCompare();
+    if(p===5) renderDailyInto("dailyTable2");
+    if(p===10) renderRecallInitial();
+    if(p===6 && state.built){ buildSeriesPick(); drawMain(); }
+    if(p===7) renderThinkPage();
+    if(p===8) renderMoonCal();
+    if(p===9){ renderRecall(); renderTodayMoon(); }
+    renderTabs(); renderNav();
+    window.scrollTo({top:0});
+  }
+  function renderTabs(){
+    var box=$("tabs"), h="", reach=maxReach();
+    for(var i=1;i<=LAST;i++){
+      var cls = i===state.page ? "cur" : (i<state.page && canLeave(i)==="" ? "done" : (i<=reach ? "" : "lock"));
+      h+="<button class='tab "+cls+"' data-t='"+i+"' "+(i>reach?"disabled":"")+"><span class='no'>"+i+"</span> "+PAGE_NAMES[i-1]+"</button>";
+    }
+    box.innerHTML=h;
+    box.querySelectorAll(".tab").forEach(function(t){
+      t.addEventListener("click", function(){ go(+t.getAttribute("data-t")); });
+    });
+  }
+  function renderNav(){
+    $("prevBtn").disabled = state.page===1;
+    var block = canLeave(state.page);
+    $("navMsg").textContent = block;
+    $("nextBtn").disabled = !!block || state.page===LAST;
+    $("nextBtn").textContent = state.page===LAST ? "완료" : "다음 →";
+  }
+  $("prevBtn").addEventListener("click", function(){ go(state.page-1); });
+  $("nextBtn").addEventListener("click", function(){ if(!canLeave(state.page)) go(state.page+1); });
+  ["stuId","stuName","guessWhy","countConfirm","gateText","intervalInput","ideaText","moonObs","bestCand","candWhy","nextSari","predWhy","reflectText"]
+    .forEach(function(id){ $(id).addEventListener("input", function(){ renderTabs(); renderNav(); }); });
+  document.querySelectorAll('input[name="guess"],input[name="pred"]').forEach(function(r){
+    r.addEventListener("change", function(){ renderTabs(); renderNav(); });
+  });
+
+  /* ---------- Firebase 저장 ---------- */
+  function fbReady(){ return FIREBASE.projectId && FIREBASE.apiKey; }
+  function fbSave(doc){
+    if(!fbReady()) return Promise.resolve("off");
+    var url="https://firestore.googleapis.com/v1/projects/"+FIREBASE.projectId
+      +"/databases/(default)/documents/"+FIREBASE.collection+"?key="+FIREBASE.apiKey;
+    var fields={};
+    Object.keys(doc).forEach(function(k){ fields[k]={stringValue:String(doc[k])}; });
+    return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({fields:fields})}).then(function(r){
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        return "ok";
+      });
+  }
+  function baseDoc(type){
+    return {
+      type:type,
+      studentId:$("stuId").value.trim(),
+      name:$("stuName").value.trim(),
+      group:$("stuGroup").value.trim(),
+      station:state.station||"",
+      period:state.ym||"",
+      submittedAt:new Date().toISOString()
+    };
+  }
+  function saveInitial(){
+    if(state.initialSaved) return;
+    state.initialSaved=true;
+    var d=baseDoc("initial");
+    d.guess=radioVal("guess");
+    d.guessWhy=$("guessWhy").value.trim();
+    fbSave(d).catch(function(){ state.initialSaved=false; });
+  }
+
+  /* ---------- 파싱 ---------- */
+  function getRows(){
+    if(!state.exclude || state.outlierIdx.length===0) return state.rows;
+    var bad={}; state.outlierIdx.forEach(function(i){ bad[i]=true; });
+    return state.rows.filter(function(_,i){ return !bad[i]; });
+  }
+  function detectOutliers(rows){
+    var TH = rows.length > 10000 ? 50 : 300;
+    var out=[], last=null;
+    rows.forEach(function(r,i){
+      var bad = (r.tide < -300 || r.tide > 1500);
+      if(last!==null && Math.abs(r.tide-last) > TH) bad = true;
+      if(bad){ out.push(i); } else { last = r.tide; }
+    });
+    return out;
+  }
+  function parseText(text){
+    var lines = text.split(/\r?\n/);
+    var station = "", started = false, rows = [], yr=0, mo=0;
+    for (var i=0;i<lines.length;i++){
+      var ln = lines[i];
+      if (!started){
+        if (ln.indexOf("관측소명") === 0) station = ln.split(":")[1] ? ln.split(":")[1].trim() : "";
+        if (ln.indexOf("관측시간") !== -1){ started = true; }
+        continue;
+      }
+      if (!ln.trim()) continue;
+      var parts = ln.split("\t");
+      if (parts.length < 2) parts = ln.trim().split(/\s+/);
+      var dt = parts[0], tide = parseFloat(parts[1]);
+      if (!dt || isNaN(tide)) continue;
+      var m = dt.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})[ T](\d{1,2}):(\d{2})/);
+      if (!m) continue;
+      yr=+m[1]; mo=+m[2];
+      rows.push({ day:+m[3], hour:+m[4], min:+m[5], tide:tide });
+    }
+    return { station:station, rows:rows, year:yr, month:mo };
+  }
+
+  function loadData(text){
+    var p = parseText(text);
+    if (p.rows.length < 10){ alert("자료를 읽지 못했어요. 바다누리 관측자료(.txt) 형식이 맞는지 확인해 볼까요?"); return; }
+    state.station = p.station || "이름 없는 관측소";
+    state.rows = p.rows; state.year=p.year; state.month=p.month;
+    state.ym = p.year+"년 "+p.month+"월";
+    state.built=false; state.cols=[]; state.markers=[];
+
+    var daySet = {};
+    p.rows.forEach(function(r){ daySet[r.day] = true; });
+    state.days = Object.keys(daySet).map(Number).sort(function(a,b){return a-b;});
+
+    $("mStation").textContent = "관측소: " + state.station;
+    $("mPeriod").textContent = state.ym + " (" + state.days.length + "일)";
+    $("mCount").textContent = "관측값 " + p.rows.length.toLocaleString() + "개";
+    $("metaRow").hidden = false;
+
+    var tb = "<tr><th>관측시간</th><th>조위(cm)</th></tr>";
+    for (var i=0;i<6;i++){ var r=p.rows[i];
+      tb += "<tr><td class='mono'>"+state.year+"/"+pad(state.month)+"/"+pad(r.day)+" "+pad(r.hour)+":"+pad(r.min)+"</td><td class='mono'>"+r.tide+"</td></tr>"; }
+    tb += "<tr><td colspan='2' style='text-align:center;color:var(--dim)'>… 총 "+p.rows.length.toLocaleString()+"행 (조위 열만 사용해요)</td></tr>";
+    $("rawPreview").innerHTML = tb; $("rawPreviewWrap").hidden = false;
+
+    var sel = $("daySelect"); sel.innerHTML = "";
+    state.days.forEach(function(d){ var o=document.createElement("option"); o.value=d; o.textContent=state.month+"월 "+d+"일"; sel.appendChild(o); });
+
+    state.outlierIdx = detectOutliers(p.rows);
+    state.exclude = false;
+    if(state.outlierIdx.length > 0){
+      var t="<tr><th>관측시간</th><th>조위(cm)</th><th>직전 정상값과의 차이</th></tr>", lastGood=null, shown=0;
+      var bad={}; state.outlierIdx.forEach(function(i){ bad[i]=true; });
+      for(var j=0;j<p.rows.length && shown<10;j++){
+        var rr=p.rows[j];
+        if(bad[j]){ t+="<tr><td class='mono'>"+pad(rr.day)+"일 "+pad(rr.hour)+":"+pad(rr.min)+"</td><td class='mono' style='color:var(--coral);font-weight:700;'>"+rr.tide+"</td><td class='mono'>"+(lastGood===null?"—":Math.round(rr.tide-lastGood))+"</td></tr>"; shown++; }
+        else lastGood=rr.tide;
+      }
+      if(state.outlierIdx.length>10) t+="<tr><td colspan='3' style='text-align:center;color:var(--dim)'>… 외 "+(state.outlierIdx.length-10)+"개</td></tr>";
+      $("outlierTable").innerHTML=t;
+      $("cleanStatus").textContent="의심스러운 값 "+state.outlierIdx.length+"개를 찾았어요. 결정하지 않아도 진행은 되지만, 그래프가 어떻게 되는지는 여러분의 선택에 달려 있어요.";
+      $("cleanCard").hidden=false;
+    } else { $("cleanCard").hidden=true; }
+    renderTabs(); renderNav();
+  }
+
+  $("fileInput").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){ loadData(rd.result); };
+    rd.readAsText(f, "utf-8");
+  });
+  $("pasteBtn").addEventListener("click", function(){ loadData($("pasteInput").value); });
+  $("excludeBtn").addEventListener("click", function(){
+    state.exclude=true;
+    $("cleanStatus").textContent="결정: 오류값 "+state.outlierIdx.length+"개를 제외했어요. (실제 연구자들도 이런 판단을 기록으로 남긴답니다)";
+    if(state.built){ computeDaily(); renderDailyInto("dailyTable"); }
+  });
+  $("keepBtn").addEventListener("click", function(){
+    state.exclude=false;
+    $("cleanStatus").textContent="결정: 일단 그대로 두었어요. 그래프에서 이 값들이 어떻게 보이는지 확인한 뒤, 언제든 이 페이지로 돌아와 다시 결정할 수 있어요.";
+    if(state.built){ computeDaily(); renderDailyInto("dailyTable"); }
+  });
+
+  /* ---------- 하루 보기 (여러 날 비교) ---------- */
+  var DAY_COLORS=["#0E7C86","#E0584D","#3C6FA5","#C89A3D"];
+  $("dayAddBtn").addEventListener("click", function(){
+    var d=+$("daySelect").value;
+    if(state.compareDays.indexOf(d)>=0) return;
+    if(state.compareDays.length>=4){ alert("비교는 4일까지가 보기 좋아요. 하나를 지우고 추가해 주세요."); return; }
+    state.compareDays.push(d);
+    renderDayCompare();
+  });
+  $("dayClearBtn").addEventListener("click", function(){ state.compareDays=[]; renderDayCompare(); });
+
+  function renderDayCompare(){
+    var box=$("dayChips"); box.innerHTML="";
+    state.compareDays.forEach(function(d,i){
+      var b=document.createElement("button"); b.className="daychip";
+      b.style.background=DAY_COLORS[i%DAY_COLORS.length];
+      b.innerHTML=state.month+"월 "+d+"일 ✕";
+      b.setAttribute("aria-label", d+"일 비교에서 빼기");
+      b.addEventListener("click", function(){
+        state.compareDays.splice(state.compareDays.indexOf(d),1); renderDayCompare();
+      });
+      box.appendChild(b);
+    });
+    if(state.compareDays.length===0){ $("dayChartShell").hidden=true; }
+    else { drawDayChart(); $("dayChartShell").hidden=false; }
+    $("parkingCard").hidden = !(+$("countConfirm").value > 0);
+    $("namingCard").hidden = state.compareDays.length < 2;
+    $("drivingCard").hidden = !(state.compareDays.length>=2 && +$("countConfirm").value>0);
+    renderTabs(); renderNav();
+  }
+  $("countConfirm").addEventListener("input", renderDayCompare);
+
+  function drawDayChart(){
+    var W=900,H=320,L=60,R=20,T=30,B=60;
+    var seriesPts = state.compareDays.map(function(d){
+      var pts = getRows().filter(function(r){ return r.day===d && (r.min%5===0); });
+      if(pts.length===0) pts = getRows().filter(function(r){ return r.day===d; });
+      return pts;
+    });
+    var all=[]; seriesPts.forEach(function(pts){ pts.forEach(function(p){ all.push(p.tide); }); });
+    if(all.length===0){ $("dayChart").innerHTML=""; return; }
+    var lo=Math.min.apply(null,all), hi=Math.max.apply(null,all);
+    var padV=Math.max(5,(hi-lo)*0.1); lo-=padV; hi+=padV;
+    var ys=function(v){ return T+(H-T-B)*(1-(v-lo)/(hi-lo)); };
+    var xt=function(hh,mm){ return L+(W-L-R)*(hh*60+mm)/1439; };
+    var s2="";
+    s2+=axisBox(L,T,W-R,H-B);
+    for(var h=0;h<=24;h+=6){ var x=L+(W-L-R)*h/24;
+      s2+="<line x1='"+x+"' y1='"+(H-B)+"' x2='"+x+"' y2='"+(H-B+5)+"' stroke='#14323F'/>";
+      s2+="<text x='"+x+"' y='"+(H-B+20)+"' font-size='12' text-anchor='middle' fill='#5F7280'>"+h+"시</text>"; }
+    ticksY(lo,hi,ys,L,W-R).forEach(function(t){ s2+=t; });
+    var lx=L+8;
+    seriesPts.forEach(function(pts,si){
+      var col=DAY_COLORS[si%DAY_COLORS.length], d="";
+      for(var i=0;i<pts.length;i++){ d+=(i?"L":"M")+xt(pts[i].hour,pts[i].min).toFixed(1)+" "+ys(pts[i].tide).toFixed(1)+" "; }
+      s2+="<path d='"+d+"' fill='none' stroke='"+col+"' stroke-width='2.3'/>";
+      s2+="<rect x='"+lx+"' y='"+(T-14)+"' width='10' height='10' rx='2' fill='"+col+"'/>";
+      s2+="<text x='"+(lx+15)+"' y='"+(T-5)+"' font-size='12' fill='#14323F'>"+state.compareDays[si]+"일</text>";
+      lx+=68;
+    });
+    s2+="<text x='"+(W/2)+"' y='"+(H-16)+"' font-size='13' text-anchor='middle' fill='#5F7280'>하루 동안 물은 몇 번 오르내리나요? 날마다 오르내림의 폭은 같은가요?</text>";
+    s2+="<text x='14' y='"+((T+H-B)/2)+"' font-size='12' fill='#5F7280' transform='rotate(-90 14 "+((T+H-B)/2)+")' text-anchor='middle'>조위(cm)</text>";
+    $("dayChart").innerHTML=s2;
+  }
+
+  /* ---------- 요약 ---------- */
+  var chks = document.querySelectorAll('.page[data-page="4"] input[type=checkbox]');
+  chks.forEach(function(c){ c.addEventListener("change", function(){
+    $("buildBtn").disabled = !Array.prototype.some.call(chks, function(x){return x.checked;});
+  });});
+  $("buildBtn").addEventListener("click", function(){
+    state.cols = Array.prototype.filter.call(chks,function(x){return x.checked;}).map(function(x){return x.value;});
+    computeDaily(); renderDailyInto("dailyTable"); $("dailyWrap").hidden=false;
+    state.built=true; state.markers=[]; renderTabs(); renderNav();
+  });
+  function computeDaily(){
+    state.daily = {};
+    state.days.forEach(function(d){ state.daily[d] = {n:0,sum:0,max:-1e9,min:1e9}; });
+    getRows().forEach(function(r){ var o=state.daily[r.day];
+      o.n++; o.sum+=r.tide; if(r.tide>o.max)o.max=r.tide; if(r.tide<o.min)o.min=r.tide; });
+    state.days.forEach(function(d){ var o=state.daily[d];
+      o.avg=Math.round(o.sum/o.n*10)/10; o.range=o.max-o.min; });
+  }
+  function renderDailyInto(tid){
+    if(!state.built){ $(tid).innerHTML=""; return; }
+    var h="<tr><th>일</th>"; state.cols.forEach(function(c){ h+="<th>"+COLDEF[c]+"</th>"; }); h+="</tr>";
+    state.days.forEach(function(d){ h+="<tr><td class='mono'>"+d+"</td>";
+      state.cols.forEach(function(c){ h+="<td class='mono'>"+state.daily[d][c]+"</td>"; }); h+="</tr>"; });
+    $(tid).innerHTML=h;
+  }
+
+  /* ---------- 그래프 ---------- */
+  function buildSeriesPick(){
+    var box=$("seriesPick");
+    box.innerHTML="<span style='font-size:13.5px;font-weight:800;color:var(--brand-deep);align-self:center;'>무엇을 그려 볼까요 →</span>";
+    state.cols.forEach(function(c){
+      var l=document.createElement("label"); l.className="chk";
+      l.innerHTML="<input type='checkbox' value='"+c+"'> <span style='color:"+SERIES_COLORS[c]+"'>●</span> "+COLDEF[c];
+      l.querySelector("input").addEventListener("change", drawMain);
+      box.appendChild(l);
+    });
+  }
+  ["tTitle","tY","tX"].forEach(function(id){ $(id).addEventListener("input", function(){ drawMain(); }); });
+  function selectedSeries(){
+    return Array.prototype.filter.call(document.querySelectorAll("#seriesPick input"),function(x){return x.checked;})
+      .map(function(x){return x.value;});
+  }
+  function drawMain(){
+    var W=900,H=430,L=64,R=22,T=44,B=56;
+    var svg=$("mainChart");
+    var series=selectedSeries();
+    var s="";
+    var title=$("tTitle").value.trim(), yl=$("tY").value.trim(), xl=$("tX").value.trim();
+    s+="<text x='"+(W/2)+"' y='24' font-size='16' font-weight='bold' text-anchor='middle' fill='"+(title?"#14323F":"#A8B6BF")+"' font-style='"+(title?"normal":"italic")+"'>"+esc(title||"(제목을 붙여 주세요)")+"</text>";
+    s+=axisBox(L,T,W-R,H-B);
+    var n=state.days.length;
+    var xs=function(i){ return L+(W-L-R)*(n<2?0.5:i/(n-1)); };
+    state.days.forEach(function(d,i){ if(d%2===1||n<=15){
+      s+="<text x='"+xs(i)+"' y='"+(H-B+18)+"' font-size='11' text-anchor='middle' fill='#5F7280' class='mono'>"+d+"</text>"; }});
+    s+="<text x='"+(W/2)+"' y='"+(H-10)+"' font-size='13' text-anchor='middle' fill='"+(xl?"#14323F":"#A8B6BF")+"' font-style='"+(xl?"normal":"italic")+"'>"+esc(xl||"(가로축의 이름은?)")+"</text>";
+    s+="<text x='16' y='"+((T+H-B)/2)+"' font-size='13' fill='"+(yl?"#14323F":"#A8B6BF")+"' font-style='"+(yl?"normal":"italic")+"' transform='rotate(-90 16 "+((T+H-B)/2)+")' text-anchor='middle'>"+esc(yl||"(세로축의 이름은?)")+"</text>";
+
+    if(series.length===0){
+      s+="<text x='"+(W/2)+"' y='"+((T+H-B)/2)+"' font-size='14' text-anchor='middle' fill='#A8B6BF'>위에서 그릴 값을 고르면 그래프가 나타나요</text>";
+      svg.innerHTML=s; renderMarkerList(); return;
+    }
+    var all=[]; series.forEach(function(c){ state.days.forEach(function(d){ all.push(state.daily[d][c]); }); });
+    var lo=Math.min.apply(null,all), hi=Math.max.apply(null,all);
+    var padV=Math.max(5,(hi-lo)*0.08); lo-=padV; hi+=padV;
+    var ys=function(v){ return T+(H-T-B)*(1-(v-lo)/(hi-lo)); };
+    ticksY(lo,hi,ys,L,W-R).forEach(function(t){ s+=t; });
+
+    var lx=L+8;
+    series.forEach(function(c){
+      var col=SERIES_COLORS[c], d="";
+      state.days.forEach(function(day,i){ d+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(state.daily[day][c]).toFixed(1)+" "; });
+      s+="<path d='"+d+"' fill='none' stroke='"+col+"' stroke-width='2.4'/>";
+      state.days.forEach(function(day,i){
+        s+="<circle data-day='"+day+"' data-col='"+c+"' cx='"+xs(i).toFixed(1)+"' cy='"+ys(state.daily[day][c]).toFixed(1)+"' r='5.5' fill='"+col+"' stroke='#fff' stroke-width='1.5' style='cursor:pointer;'/>";
+      });
+      s+="<rect x='"+lx+"' y='"+(T-12)+"' width='10' height='10' rx='2' fill='"+col+"'/><text x='"+(lx+15)+"' y='"+(T-3)+"' font-size='12' fill='#14323F'>"+COLDEF[c]+"</text>";
+      lx+=COLDEF[c].length*12+45;
+    });
+
+    state.markers.forEach(function(m){
+      var i=state.days.indexOf(m.day); if(i<0) return;
+      if(series.indexOf(m.col)<0) return;
+      var x=xs(i), y=ys(state.daily[m.day][m.col]);
+      if(m.type==="up"){ s+="<path d='M"+x+" "+(y-22)+" l7 12 h-14 z' fill='#E0584D'/><text x='"+x+"' y='"+(y-27)+"' font-size='11' font-weight='bold' text-anchor='middle' fill='#E0584D' class='mono'>"+m.day+"일</text>"; }
+      else { s+="<path d='M"+x+" "+(y+22)+" l7 -12 h-14 z' fill='#3C6FA5'/><text x='"+x+"' y='"+(y+36)+"' font-size='11' font-weight='bold' text-anchor='middle' fill='#3C6FA5' class='mono'>"+m.day+"일</text>"; }
+    });
+
+    svg.innerHTML=s;
+    svg.querySelectorAll("circle[data-day]").forEach(function(c){
+      c.addEventListener("click", function(){ onPoint(+c.getAttribute("data-day"), c.getAttribute("data-col")); });
+    });
+    renderMarkerList();
+  }
+  function setMode(m){
+    state.mode = (state.mode===m)?null:m;
+    [["modeUp","up"],["modeDn","dn"],["modeErase","erase"]].forEach(function(p){
+      $(p[0]).setAttribute("aria-pressed", state.mode===p[1] ? "true":"false");
+    });
+  }
+  $("modeUp").addEventListener("click", function(){ setMode("up"); });
+  $("modeDn").addEventListener("click", function(){ setMode("dn"); });
+  $("modeErase").addEventListener("click", function(){ setMode("erase"); });
+  $("clearMarks").addEventListener("click", function(){ state.markers=[]; drawMain(); renderTabs(); renderNav(); });
+  function onPoint(day, col){
+    if(!state.mode){ return; }
+    var idx = state.markers.findIndex(function(m){ return m.day===day && m.col===col; });
+    if(state.mode==="erase"){ if(idx>=0) state.markers.splice(idx,1); }
+    else{
+      if(idx>=0) state.markers.splice(idx,1);
+      state.markers.push({day:day, col:col, type:state.mode});
+    }
+    drawMain(); renderTabs(); renderNav();
+  }
+  function renderMarkerList(){
+    var ups=upMarks(), dns=dnMarks(), html="";
+    if(ups.length) html+="<b class='up'>▲ 내가 표시한 '큰 날':</b> "+ups.join("일, ")+"일 &nbsp; ";
+    if(dns.length) html+="<b class='dn'>▼ 내가 표시한 '작은 날':</b> "+dns.join("일, ")+"일";
+    $("markerList").innerHTML=html;
+  }
+
+  /* ---------- 생각 ---------- */
+  function renderThinkPage(){
+    var ups=upMarks(), dns=dnMarks();
+    var t="▲ 큰 날: "+(ups.length?ups.join("일, ")+"일":"없음");
+    if(dns.length) t+=" · ▼ 작은 날: "+dns.join("일, ")+"일";
+    $("q7small").textContent=t;
+  }
+
+  /* ---------- 달 위상 ---------- */
+  var SYN=29.530588853, MOON_REF=Date.UTC(2000,0,6,18,14);
+  function moonAge(y,m,d){
+    var a=((Date.UTC(y,m-1,d,3)-MOON_REF)/86400000)%SYN;
+    if(a<0)a+=SYN; return a;
+  }
+  var MOON_E=["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"];
+  var MOON_L=["삭(그믐)","","상현","","보름","","하현",""];
+  function renderMoonCal(){
+    var box=$("moonCal"); box.innerHTML="";
+    ["일","월","화","수","목","금","토"].forEach(function(w){
+      var e=document.createElement("div"); e.className="wk"; e.textContent=w; box.appendChild(e);
+    });
+    var ups=upMarks(), dns=dnMarks();
+    var first=new Date(state.year, state.month-1, 1).getDay();
+    for(var b=0;b<first;b++){ var bl=document.createElement("div"); bl.className="mday blank"; box.appendChild(bl); }
+    state.days.forEach(function(d){
+      var a=moonAge(state.year,state.month,d);
+      var idx=Math.round(a/SYN*8)%8;
+      var cell=document.createElement("div");
+      cell.className="mday"+(ups.indexOf(d)>=0?" markUp":(dns.indexOf(d)>=0?" markDn":""));
+      cell.innerHTML="<div class='d'>"+d+(ups.indexOf(d)>=0?" ▲":(dns.indexOf(d)>=0?" ▼":""))+"</div>"
+        +"<div class='moon'>"+MOON_E[idx]+"</div>"
+        +(MOON_L[idx]?"<div class='lbl'>"+MOON_L[idx]+"</div>":"");
+      box.appendChild(cell);
+    });
+  }
+
+  /* ---------- 예측 ---------- */
+  function renderRecall(){
+    var g=radioVal("guess"), w=$("guessWhy").value.trim();
+    var t="수업을 시작할 때 여러분의 직감은 \u201C하루에 <b>"+(g||"미응답")+"</b>\u201D이었어요.";
+    if(w) t+=" 그리고 밀물과 썰물의 이유를 이렇게 적었죠: \u201C"+esc(w)+"\u201D";
+    $("recallGuess").innerHTML=t;
+  }
+  function renderTodayMoon(){
+    var now=new Date();
+    var a=moonAge(now.getFullYear(), now.getMonth()+1, now.getDate());
+    var idx=Math.round(a/SYN*8)%8;
+    $("todayMoon").innerHTML="<div class='m'>"+MOON_E[idx]+"</div>"
+      +"<div class='t'><b>오늘("+(now.getMonth()+1)+"월 "+now.getDate()+"일)의 달</b><br>"
+      +(MOON_L[idx]?MOON_L[idx]+" 무렵이에요.":"달의 모양을 잘 살펴보세요.")+"</div>";
+  }
+  function renderRecallInitial(){
+    var g=radioVal("guess"), w=$("guessWhy").value.trim(), c=$("countConfirm").value;
+    var t="처음의 나: 하루에 \u201C<b>"+(g||"미응답")+"</b>\u201D 오르내릴 거라 직감했고";
+    t+= w ? ", 이유는 \u201C"+esc(w)+"\u201D라고 적었어요." : ", 이유는 적지 않았어요.";
+    t+=" → 데이터로 확인한 횟수: <b>"+(c||"?")+"번</b>";
+    $("recallInitial").innerHTML=t;
+  }
+  /* ---------- 제출 ---------- */
+  function fullDoc(){
+    var d=baseDoc("final");
+    d.guess=radioVal("guess"); d.guessWhy=$("guessWhy").value.trim();
+    d.dayCount=$("countConfirm").value; d.comparedDays=state.compareDays.join(",");
+    d.cleanDecision = state.outlierIdx.length===0 ? "의심 값 없음"
+      : (state.exclude ? "의심 값 "+state.outlierIdx.length+"개 제외" : "의심 값 "+state.outlierIdx.length+"개 유지");
+    d.gate=$("gateText").value.trim();
+    d.cols=state.cols.map(function(c){return COLDEF[c];}).join(" / ");
+    d.chartTitle=$("tTitle").value.trim(); d.axisY=$("tY").value.trim(); d.axisX=$("tX").value.trim();
+    d.upDays=upMarks().join(","); d.dnDays=dnMarks().join(",");
+    d.interval=$("intervalInput").value;
+    d.ideas=$("ideaText").value.trim();
+    d.moonObs=$("moonObs").value.trim();
+    d.bestCand=$("bestCand").value.trim(); d.candWhy=$("candWhy").value.trim();
+    d.pred=radioVal("pred"); d.nextSari=$("nextSari").value; d.predWhy=$("predWhy").value.trim();
+    d.statement="조차는 약 "+($("s1").value||"__")+"일 주기로 커지고 작아지며, 사리는 달의 위상이 "
+      +($("s2").value||"__")+" · "+($("s3").value||"__")+"일 때 나타난다.";
+    d.reflect=$("reflectText").value.trim();
+    return d;
+  }
+  $("submitBtn").addEventListener("click", function(){
+    var m=$("submitMsg"); m.className="savestat"; m.textContent="보내는 중…";
+    $("submitBtn").disabled=true;
+    fbSave(fullDoc()).then(function(res){
+      if(res==="off"){
+        m.className="savestat err"; m.textContent="지금은 전송이 설정되지 않았어요 — 아래 버튼으로 내려받아 제출해 주세요.";
+        $("csvBtn").hidden=false; $("submitBtn").disabled=false;
+      } else {
+        m.className="savestat ok"; m.textContent="제출 완료! 오늘 탐구하느라 수고했어요 🎉";
+      }
+    }).catch(function(){
+      m.className="savestat err"; m.textContent="전송에 실패했어요 — 아래 버튼으로 내려받아 제출해 주세요.";
+      $("csvBtn").hidden=false; $("submitBtn").disabled=false;
+    });
+  });
+
+  /* ---------- CSV ---------- */
+  function csvCell(v){
+    v = (v===undefined||v===null) ? "" : String(v);
+    v = v.replace(/\r?\n/g, " / ");
+    return '"' + v.replace(/"/g, '""') + '"';
+  }
+  function buildCSV(){
+    var d=fullDoc(), L=[];
+    var LABELS={ studentId:"학번", name:"이름", group:"모둠", station:"관측소", period:"자료 기간",
+      guess:"처음 직감(하루 횟수)", guessWhy:"초기 생각(밀물·썰물의 이유)", dayCount:"데이터로 확인한 횟수", comparedDays:"비교한 날짜", cleanDecision:"자료 점검 결정",
+      gate:"숫자의 의미(잠깐 멈춤)", cols:"만든 요약값", chartTitle:"그래프 제목",
+      axisY:"세로축 이름", axisX:"가로축 이름", upDays:"▲ 값이 큰 날", dnDays:"▼ 값이 작은 날",
+      interval:"표시한 날들의 간격(일)", ideas:"주기 후보 브레인스토밍",
+      moonObs:"달 위상 관찰", bestCand:"가장 유력한 후보", candWhy:"후보를 고른 이유",
+      pred:"데이터 기반 예측(오늘)", nextSari:"다음 사리 예측(일)", predWhy:"예측의 근거",
+      statement:"관계 진술", reflect:"성찰", submittedAt:"제출 시각" };
+    L.push(csvCell("[조석 탐구 기록]")+",");
+    Object.keys(LABELS).forEach(function(k){ L.push(csvCell(LABELS[k])+","+csvCell(d[k])); });
+    L.push("");
+    if(state.built){
+      L.push(csvCell("[일별 표]")+",");
+      var head=["일"].concat(state.cols.map(function(c){return COLDEF[c];}));
+      L.push(head.map(csvCell).join(","));
+      state.days.forEach(function(dd){
+        var row=[dd].concat(state.cols.map(function(c){return state.daily[dd][c];}));
+        L.push(row.map(csvCell).join(","));
+      });
+    }
+    return "\uFEFF"+L.join("\r\n");
+  }
+  $("csvBtn").addEventListener("click", function(){
+    try{
+      var who=($("stuId").value.trim()+$("stuName").value.trim()).replace(/\s+/g,"");
+      var fn="조석탐구_"+(state.station||"관측소")+(who?"_"+who:"")+".csv";
+      var blob=new Blob([buildCSV()],{type:"text/csv;charset=utf-8;"});
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(blob); a.download=fn;
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+    }catch(e){ alert("내려받기가 막힌 환경이에요 — 선생님께 알려 주세요."); }
+  });
+
+  /* ---------- 공용 ---------- */
+  function axisBox(L,T,R,B){
+    return "<line x1='"+L+"' y1='"+B+"' x2='"+R+"' y2='"+B+"' stroke='#14323F' stroke-width='1.5'/>"+
+           "<line x1='"+L+"' y1='"+T+"' x2='"+L+"' y2='"+B+"' stroke='#14323F' stroke-width='1.5'/>";
+  }
+  function ticksY(lo,hi,ys,L,R){
+    var span=hi-lo, step=niceStep(span/5), out=[];
+    var start=Math.ceil(lo/step)*step;
+    for(var v=start; v<=hi; v+=step){
+      var y=ys(v);
+      out.push("<line x1='"+L+"' y1='"+y+"' x2='"+R+"' y2='"+y+"' stroke='#E7EEF1'/>");
+      out.push("<text x='"+(L-8)+"' y='"+(y+4)+"' font-size='11' text-anchor='end' fill='#5F7280' class='mono'>"+Math.round(v)+"</text>");
+    }
+    return out;
+  }
+  function niceStep(raw){
+    var mag=Math.pow(10,Math.floor(Math.log10(raw)));
+    var r=raw/mag;
+    return (r<1.5?1:r<3.5?2:r<7.5?5:10)*mag;
+  }
+
+  go(1);
+})();
+</script>
+</body>
+</html>
