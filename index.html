@@ -154,6 +154,14 @@
   .todaymoon .t{font-size:13.5px;}
   .todaymoon .t b{font-size:15px;}
 
+
+  /* 소크라테스식 AI 힌트 */
+  .aihelp{margin-top:16px;}
+  .hintbox{background:#F3F0FA; border:1.5px solid #C9BEEA; border-radius:14px;
+           padding:13px 17px; margin-top:10px; font-size:14px; color:#3D2E6B; line-height:1.7;}
+  .hintbox.loading{color:var(--dim); font-style:italic;}
+  #hintBtn7[disabled], #hintBtn8[disabled]{opacity:.6; cursor:wait;}
+
   .navbar{position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
           border-top:1px solid var(--line); padding:12px 14px; z-index:30;
           box-shadow:0 -4px 16px rgba(20,50,63,.05);}
@@ -355,6 +363,10 @@
     <div class="q" style="margin-top:16px;">이 날짜만큼의 주기로 반복되는 것에는 무엇이 있을까요?
       <small>바다 밖으로 눈을 돌려 보세요 — 자연에서, 하늘에서, 달력에서. 떠오르는 것을 모두 적어 주세요. 정답을 고르는 게 아니라 <b>후보를 모으는</b> 시간이에요.</small></div>
     <textarea id="ideaText" placeholder="예: ○○이 이 정도 주기로 반복돼요 / ○○도 비슷한 것 같아요 …"></textarea>
+    <div class="aihelp">
+      <button class="btn-ghost" id="hintBtn7">🤔 생각이 막히면, 살짝 도움 받기</button>
+      <div class="hintbox" id="hintBox7" hidden></div>
+    </div>
   </section>
 </div>
 
@@ -369,6 +381,10 @@
     <div class="q" style="margin-top:18px;">무엇이 보이나요?
       <small>▲ 날들의 달 모양에는 공통점이 있나요? ▼ 날들은요? 관찰한 것을 그대로 적어 주세요.</small></div>
     <textarea id="moonObs" placeholder="예: 내가 표시한 큰 날들은 달이 … / 작은 날들은 …"></textarea>
+    <div class="aihelp">
+      <button class="btn-ghost" id="hintBtn8">🤔 무엇을 봐야 할지 모르겠다면, 도움 받기</button>
+      <div class="hintbox" id="hintBox8" hidden></div>
+    </div>
     <div class="q" style="margin-top:18px;">앞에서 모은 후보들 중, 이 달력과 맞아떨어지는 후보는 무엇인가요?
       <small>그 후보를 고른 이유(무엇이 어떻게 맞아떨어졌는지)도 함께 적어 주세요. 맞아떨어지는 후보가 없다면, 그것도 훌륭한 발견이에요 — 그대로 적어 주세요.</small></div>
     <div class="grid2">
@@ -457,6 +473,10 @@
     apiKey: "AIzaSyBANKMDzgZ-Ox37CDxV-rLB3VXvZE_SOeo",
     collection: "tide_submissions"
   };
+  // Cloud Function 배포 후 나온 트리거 URL을 여기에 붙여넣으세요.
+  // 예: "https://asia-northeast3-newtide-ec490.cloudfunctions.net/tideHint"
+  var HINT_URL = "https://tide-hint.wd00323.workers.dev";
+  var HINT_MAX = 4;
 
   var state = { station:"", rows:[], days:[], daily:{}, cols:[], markers:[], mode:null,
                 ym:"", year:0, month:0, outlierIdx:[], exclude:false, built:false,
@@ -1006,6 +1026,43 @@
       setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
     }catch(e){ alert("내려받기가 막힌 환경이에요 — 선생님께 알려 주세요."); }
   });
+
+  /* ---------- 소크라테스식 AI 힌트 ---------- */
+  var hintCount = { 7:0, 8:0 };
+  function wireHint(stage, btnId, boxId, textareaId){
+    var btn=$(btnId), box=$(boxId);
+    btn.addEventListener("click", function(){
+      if(!HINT_URL){
+        box.hidden=false; box.className="hintbox";
+        box.textContent="이 도움 기능은 아직 선생님이 설정하지 않았어요. 스스로 조금 더 생각해 볼까요?";
+        return;
+      }
+      if(hintCount[stage] >= HINT_MAX){
+        box.hidden=false; box.className="hintbox";
+        box.textContent="오늘은 힌트를 충분히 받았어요. 지금까지 받은 질문들로 다시 한 번 생각해 볼까요?";
+        return;
+      }
+      var txt = $(textareaId).value.trim();
+      btn.disabled=true;
+      box.hidden=false; box.className="hintbox loading"; box.textContent="생각을 정리하는 중…";
+      fetch(HINT_URL, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ stage:stage, studentText: txt, hintNo: hintCount[stage]+1 })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        hintCount[stage]++;
+        box.className="hintbox";
+        box.textContent = d.hint || "지금은 도움을 가져오지 못했어요. 다시 눌러볼까요?";
+        btn.disabled=false;
+        btn.textContent = "🤔 다른 도움 받기 ("+hintCount[stage]+"/"+HINT_MAX+")";
+      }).catch(function(){
+        box.className="hintbox";
+        box.textContent="연결에 실패했어요. 잠시 후 다시 시도해 주세요.";
+        btn.disabled=false;
+      });
+    });
+  }
+  wireHint(7, "hintBtn7", "hintBox7", "ideaText");
+  wireHint(8, "hintBtn8", "hintBox8", "moonObs");
 
   /* ---------- 공용 ---------- */
   function axisBox(L,T,R,B){
